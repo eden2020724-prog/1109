@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🚀 AI Prompt 智能寶庫</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #090d16;
+        }
+        /* 卡片頂部紫色裝飾條 */
+        .card-purple-bar {
+            border-top: 4px solid #c084fc;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-100 bg-slate-950">
+
+    <!-- Toast 通知容器 -->
+    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 bg-blue-600 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3">
+        <i class="fa-solid fa-circle-check text-emerald-300 text-lg"></i>
+        <span id="toast-msg" class="font-medium">已成功複製提示詞！</span>
+    </div>
+
+    <!-- 頂部 Header 區塊 -->
+    <header class="pt-8 pb-6 px-4 text-center max-w-6xl mx-auto w-full">
+        <div class="flex items-center justify-center gap-2 mb-2">
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-white flex items-center gap-2">
+                🚀 AI Prompt 智能寶庫
+            </h1>
+        </div>
+        <div class="flex justify-center items-center gap-4 mb-6">
+            <a href="#" onclick="alert('已連動 Google Sheet 資料庫'); return false;" class="text-xs sm:text-sm text-slate-300 hover:text-white transition flex items-center gap-1.5 bg-slate-900 px-3 py-1 rounded-full shadow-sm border border-slate-800">
+                <i class="fa-solid fa-file-csv text-emerald-400"></i> 開啟原始資料 Google Sheet
+            </a>
+            <button onclick="openModal()" class="text-xs sm:text-sm bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded-full shadow-sm transition flex items-center gap-1.5 font-medium">
+                <i class="fa-solid fa-plus"></i> 新增提示詞
+            </button>
+        </div>
+
+        <!-- 搜尋列 -->
+        <div class="relative max-w-xl mx-auto mb-6">
+            <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-500"></i>
+            <input 
+                type="text" 
+                id="search-input" 
+                oninput="handleSearch()"
+                placeholder="搜尋提示詞..." 
+                class="w-full pl-11 pr-4 py-2.5 rounded-full border border-slate-800 bg-slate-900 text-slate-100 placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm transition"
+            >
+        </div>
+
+        <!-- 分類標籤 Pill (動態連動數量) -->
+        <div id="category-pills" class="flex flex-wrap justify-center gap-2 max-w-4xl mx-auto">
+            <!-- 由 JS 動態繪製與更新統計數量 -->
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 pb-16">
+        <!-- 分類區塊標題 -->
+        <div class="flex items-center justify-between mb-6 border-b border-slate-800 pb-3">
+            <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                <span>🧠</span> AI 協思
+            </h2>
+            <div class="text-xs sm:text-sm text-slate-400">
+                顯示共 <span id="count-display" class="font-bold text-blue-400">0</span> 筆提示詞
+            </div>
+        </div>
+
+        <!-- Prompt 卡片網格 -->
+        <div id="prompt-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- 由 JS 動態生成 -->
+        </div>
+    </main>
+
+    <!-- 新增 / 編輯 Prompt 彈窗 Modal -->
+    <div id="prompt-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-40 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 relative animate-fade-in text-slate-100">
+            <button onclick="closeModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-xl"></i>
+            </button>
+            <h3 id="modal-title" class="text-xl font-bold text-white mb-4">新增提示詞</h3>
+            
+            <form id="prompt-form" onsubmit="savePrompt(event)" class="space-y-4">
+                <input type="hidden" id="form-id">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">分類</label>
+                    <select id="form-category" required class="w-full bg-slate-800 border border-slate-700 text-slate-100 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                        <option value="內容創作">內容創作</option>
+                        <option value="筆記精煉">筆記精煉</option>
+                        <option value="程式應用">程式應用</option>
+                        <option value="簡報表達">簡報表達</option>
+                        <option value="程式生成">程式生成</option>
+                        <option value="文本優化">文本優化</option>
+                        <option value="生文校正">生文校正</option>
+                        <option value="專案企劃">專案企劃</option>
+                        <option value="圖片生成">圖片生成</option>
+                        <option value="筆記整理">筆記整理</option>
+                        <option value="資訊整理">資訊整理</option>
+                        <option value="心智圖法">心智圖法</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">提示詞名稱 (標題)</label>
+                    <input type="text" id="form-title" required placeholder="例如：品牌名稱" class="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-semibold text-slate-300 mb-1">Prompt 詳細內容</label>
+                    <textarea id="form-content" rows="6" required placeholder="輸入具體的提示詞內容..." class="w-full bg-slate-800 border border-slate-700 text-slate-100 placeholder-slate-500 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none font-mono text-xs leading-relaxed"></textarea>
+                </div>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-sm text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">取消</button>
+                    <button type="submit" class="px-5 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium shadow-md transition">儲存並連動</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript 邏輯與資料動態連動處理 -->
+    <script>
+        // 初始提示詞資料 (對應圖片與試算表結構)
+        let prompts = [
+            {
+                id: '1',
+                category: '內容創作',
+                title: '意義單詞',
+                content: '將文章的重點部分，尋找一個代表性英文字母，並使這些字母的首字組合成一個具有意義的單詞（如「VISION」）'
+            },
+            {
+                id: '2',
+                category: '內容創作',
+                title: '品牌名稱',
+                content: '完成 ChatGPT 角色定義後，依據「品牌定義」與「產品介紹」發想5個產品名稱與標題（口號）。\n- 提示詞指令：描述品牌與產品，請列出數字 個產品名稱與行銷標題建議。(*品牌定義*描述、*產品介紹*描述)\n- Prompt\n- 我推出一個運動鞋品牌，今年會銷售一款新型跑步...'
+            },
+            {
+                id: '3',
+                category: '筆記精煉',
+                title: '長篇文章',
+                content: '為這一篇長篇文章，進行以下四個步驟，每一個步驟都要提供給文章與標示出來：\n第1、請為這篇文件生成一份簡短摘要。\n第2、請基於上一個摘要，不要遺漏任何專有名詞、數字或關鍵人物，重新生成一份摘要。\n第3、現在，請將摘要中每一句話都濃縮成更簡潔的表達，同時保留...'
+            },
+            {
+                id: '4',
+                category: '筆記精煉',
+                title: '書籍精煉',
+                content: '請對 @[檔名]\n啟動【終極煉金管線】，一次執行四步驟整合：\n第一步：全域架構導航 (Stage 01) 執行 stage-1-navigator，對精煉稿進行深度掃描，產出知識地圖與反直覺預警。\n存檔：01_Map_[主題簡稱].md。\n第二步：價值 DNA 診斷 (Stage 02)'
+            },
+            {
+                id: '5',
+                category: '筆記精煉',
+                title: '書籍精煉',
+                content: '我剛讀完了關於 [填入具體段落標題] 的內容。現在請幫我進行深度研磨：\n\n1-底層邏輯拷問：針對這段內容的「運作原理」向我提問，測試我是條件理解了「為什麼有效」，而非只是記住步驟。\n\n2-鏈條簡化：如果這段概念有複雜'
+            },
+            {
+                id: '6',
+                category: '筆記精煉',
+                title: '提取練習',
+                content: '我剛讀完了關於 [填入具體段落標題] 的內容。現在請幫我進行深度研磨：\n1-底層邏輯拷問：針對這段內容的「運作原理」向我提問，測試我是條件理解了「為什麼有效」，而非只是記住步驟。'
+            },
+            {
+                id: '7',
+                category: '內容創作',
+                title: '影片清理',
+                content: '你的角色是一位「逐字稿校對員」，不是編輯。\n任務：\n1-僅刪除口語填充詞、重複說法、明顯贅詞\n2-不得改寫句型、不得改變原意、不得加入新解釋\n規則：\n1-原句順序必須完全一致\n2-若刪除任何詞語，需確保前後文順'
+            },
+            {
+                id: '8',
+                category: '內容創作',
+                title: '影片清理',
+                content: '你的角色是一位「內容結構化整理員」，不是編輯、不是評論者。\n\n我會提供一段約 4000 字的影片逐字稿內容，請你在完全保留原作者語意與立場的前提下，\n進行「保留語意的濃縮」，將內容壓縮至 約 2000 字。全文用繁體中文呈現。'
+            }
+        ];
+
+        // 預設分類列表
+        const categories = [
+            '全部', '內容創作', '筆記精煉', '程式應用', '簡報表達', 
+            '程式生成', '文本優化', '生文校正', '專案企劃', '圖片生成', 
+            '筆記整理', '資訊整理', '心智圖法'
+        ];
+
+        let selectedCategory = '全部';
+        let searchQuery = '';
+
+        // 初始化頁面
+        document.addEventListener('DOMContentLoaded', () => {
+            renderPills();
+            renderCards();
+        });
+
+        // 動態計算各分類數量並繪製標籤 (連動數據核心)
+        function renderPills() {
+            const container = document.getElementById('category-pills');
+            container.innerHTML = '';
+
+            // 計算分類數量
+            const counts = { '全部': prompts.length };
+            categories.forEach(cat => {
+                if (cat !== '全部') {
+                    counts[cat] = prompts.filter(p => p.category === cat).length;
+                }
+            });
+
+            categories.forEach(cat => {
+                const count = counts[cat] || 0;
+                const isSelected = selectedCategory === cat;
+                
+                const btn = document.createElement('button');
+                btn.onclick = () => selectCategory(cat);
+                
+                // 深色主題下的動態 Pill 樣式
+                if (isSelected) {
+                    btn.className = 'px-4 py-1.5 text-xs sm:text-sm rounded-full bg-blue-600 text-white font-medium shadow-md transition-all duration-200 flex items-center gap-1.5';
+                } else {
+                    btn.className = 'px-4 py-1.5 text-xs sm:text-sm rounded-full bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 hover:text-white font-medium shadow-sm transition-all duration-200 flex items-center gap-1.5';
+                }
+
+                btn.innerHTML = `<span>${cat}</span>${count > 0 ? `<span class="text-[11px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-blue-700 text-blue-100' : 'bg-slate-800 text-slate-400'}">${count}</span>` : ''}`;
+                container.appendChild(btn);
+            });
+        }
+
+        // 選擇分類
+        function selectCategory(cat) {
+            selectedCategory = cat;
+            renderPills();
+            renderCards();
+        }
+
+        // 搜尋監聽
+        function handleSearch() {
+            searchQuery = document.getElementById('search-input').value.toLowerCase().trim();
+            renderCards();
+        }
+
+        // 動態過濾並繪製 Prompt 卡片 (深色主題)
+        function renderCards() {
+            const grid = document.getElementById('prompt-grid');
+            const countDisplay = document.getElementById('count-display');
+
+            // 雙重過濾：分類 + 關鍵字搜尋
+            const filtered = prompts.filter(item => {
+                const matchCat = selectedCategory === '全部' || item.category === selectedCategory;
+                const matchSearch = item.title.toLowerCase().includes(searchQuery) || 
+                                    item.content.toLowerCase().includes(searchQuery) || 
+                                    item.category.toLowerCase().includes(searchQuery);
+                return matchCat && matchSearch;
+            });
+
+            countDisplay.innerText = filtered.length;
+            grid.innerHTML = '';
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-16 bg-slate-900/50 rounded-2xl border border-dashed border-slate-800">
+                        <i class="fa-regular fa-folder-open text-4xl text-slate-600 mb-3"></i>
+                        <p class="text-slate-400 text-sm">找不到符合條件的提示詞卡片</p>
+                    </div>
+                `;
+                return;
+            }
+
+            filtered.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900 rounded-2xl shadow-lg hover:shadow-2xl hover:border-slate-700 transition-all duration-200 border border-slate-800 card-purple-bar flex flex-col justify-between overflow-hidden relative group';
+
+                card.innerHTML = `
+                    <div class="p-5 flex-1 flex flex-col">
+                        <!-- 分類標籤 -->
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="inline-block px-2.5 py-1 text-[11px] font-semibold text-blue-400 bg-blue-950/80 border border-blue-900/50 rounded-md">
+                                ${escapeHtml(item.category)}
+                            </span>
+                            <button onclick="deletePrompt('${item.id}')" class="opacity-0 group-hover:opacity-100 text-slate-500 hover:text-rose-400 transition text-xs p-1" title="刪除">
+                                <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- 標題 -->
+                        <h3 class="text-base font-bold text-white mb-3 line-clamp-1">
+                            ${escapeHtml(item.title)}
+                        </h3>
+
+                        <!-- 內容 (黑色主題深色邊框背景) -->
+                        <div class="bg-slate-950/80 rounded-xl p-3 text-xs text-slate-300 leading-relaxed font-normal whitespace-pre-wrap flex-1 max-h-44 overflow-y-auto border border-slate-800/80">
+                            ${escapeHtml(item.content)}
+                        </div>
+                    </div>
+
+                    <!-- 複製按鈕 (深色模式亮藍按鈕) -->
+                    <div class="p-4 pt-0">
+                        <button 
+                            onclick="copyToClipboard(\`${escapeJsString(item.content)}\`)"
+                            class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white font-medium text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2">
+                            <i class="fa-regular fa-copy"></i>
+                            複製 Prompt
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // 複製到剪貼簿功能
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                showToast('已成功複製 Prompt 到剪貼簿！');
+            } catch (err) {
+                showToast('複製失敗，請手動複製');
+            }
+            document.body.removeChild(textarea);
+        }
+
+        // Toast 通知
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toast-msg');
+            toastMsg.innerText = msg;
+
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+
+        // 新增/儲存 Prompt
+        function savePrompt(e) {
+            e.preventDefault();
+            const category = document.getElementById('form-category').value;
+            const title = document.getElementById('form-title').value.trim();
+            const content = document.getElementById('form-content').value.trim();
+
+            if (!title || !content) return;
+
+            const newPrompt = {
+                id: Date.now().toString(),
+                category,
+                title,
+                content
+            };
+
+            prompts.unshift(newPrompt);
+
+            renderPills();
+            renderCards();
+            closeModal();
+            showToast('提示詞新增成功並已同步連動！');
+        }
+
+        // 刪除 Prompt
+        function deletePrompt(id) {
+            if (confirm('確定要刪除這筆提示詞嗎？')) {
+                prompts = prompts.filter(p => p.id !== id);
+                renderPills();
+                renderCards();
+                showToast('提示詞已刪除');
+            }
+        }
+
+        // Modal 控制
+        function openModal() {
+            document.getElementById('prompt-form').reset();
+            document.getElementById('prompt-modal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('prompt-modal').classList.add('hidden');
+        }
+
+        // 字串轉義輔助函式
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+        function escapeJsString(str) {
+            return str.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\${/g, '\\${');
+        }
+    </script>
+</body>
+</html>
